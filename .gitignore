@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.env
+.DS_Store
+# datasets are not redistributed (download from the original providers)
+data/
+*.mat
+*.tif
+*.npz

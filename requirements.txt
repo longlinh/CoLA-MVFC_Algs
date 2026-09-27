@@ -1,0 +1,3 @@
+numpy>=1.24          # the algorithm, the protocol, the synthetic scene
+scipy>=1.10          # required by scikit-learn
+scikit-learn>=1.3    # shrinkage LDA (Ledoit-Wolf) and stratified folds for the out-of-fold posteriors

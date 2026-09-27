@@ -1,0 +1,48 @@
+cff-version: 1.2.0
+title: "CoLA-MVFC: reference implementation of collaborative label-anchored semi-supervised multi-view fuzzy clustering"
+message: >-
+  If you use this software, please cite both the software itself and the
+  accompanying paper listed under preferred-citation.
+type: software
+authors:
+  - family-names: Nguyen
+    given-names: Xuan Hoang
+    orcid: https://orcid.org/0009-0007-1721-6931
+    affiliation: Hanoi University of Industry, Hanoi, Vietnam
+  - family-names: Mai
+    given-names: Dinh Sinh
+    affiliation: Le Quy Don Technical University, Hanoi, Vietnam
+  - family-names: Nguyen
+    given-names: Long Giang
+    affiliation: Institute of Information Technology, Vietnam Academy of Science and Technology, Hanoi, Vietnam
+abstract: >-
+  NumPy reference implementation of CoLA-MVFC, a collaborative semi-supervised
+  multi-view fuzzy clustering model in which every quantity a view contributes
+  (per-dimension metric, class means, classifier guidance cost, view weight) is
+  estimated from the fixed label set and expressed in a unit defined on it, and
+  the views collaborate through one shared fuzzy membership. Includes the
+  evaluation protocol (label layouts, block corruption), a synthetic
+  demonstration and tests.
+keywords:
+  - fuzzy c-means
+  - semi-supervised clustering
+  - multi-view clustering
+  - collaborative clustering
+  - hyperspectral
+  - remote sensing
+license: MIT
+version: 1.0.0
+preferred-citation:
+  type: article
+  title: >-
+    Collaborative label-anchored semi-supervised multi-view fuzzy clustering
+    for hyperspectral and low-dimensional auxiliary remote sensing data
+  authors:
+    - family-names: Nguyen
+      given-names: Xuan Hoang
+    - family-names: Mai
+      given-names: Dinh Sinh
+    - family-names: Nguyen
+      given-names: Long Giang
+  year: 2026
+  notes: Manuscript submitted for publication. Journal and DOI to be added on acceptance.
