@@ -37,7 +37,7 @@ Python 3.9 or newer; three dependencies, no GPU:
 ```bash
 pip install -r requirements.txt     # numpy, scipy, scikit-learn
 python demo.py                      # synthetic scene, about 2 s
-pytest tests/ -q                    # 13 tests (parity tests are skipped without the authors' library)
+pytest tests/ -q                    # 15 tests (parity tests are skipped without the authors' library)
 ```
 
 `demo.py` prints, deterministically (5 % stratified labels, parameters selected on 20 % held-out labels):

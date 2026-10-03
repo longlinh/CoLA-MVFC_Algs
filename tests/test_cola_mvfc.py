@@ -110,3 +110,28 @@ def test_protocol_parity_with_harness(scene):
     h = h_cloud(sc, 0, 0.6, SEED, block=32, level=3.0)
     ours, dam = cloud_blocks(scene["views"], 0, scene["valid"], scene["height"], scene["width"], 0.6, SEED)
     assert np.array_equal(h["damaged"], dam) and all(np.array_equal(a, b) for a, b in zip(h["views"], ours))
+
+
+@pytest.mark.parametrize("theta_gs", [(0.5, 0.8, 0.95), (0.05, 0.2, 0.5, 0.95)])
+def test_selection_parity_with_harness(scene, theta_gs):
+    """Parameter selection (held-out split + grid search on 20 % of the labels) matches the experiment harness, for the paper grid
+    and for a wider theta_g grid."""
+    harness = os.environ.get("COLA_HARNESS")
+    if not harness or not Path(harness).exists():
+        pytest.skip("experiment harness not available (set COLA_HARNESS)")
+    sys.path.insert(0, str(harness))
+    from gate.run_gate import holdout_split as h_holdout
+    from gate.run_gate import select_sag_params as h_select
+    lab, C = scene["lab"], scene["n_classes"]
+    h_tr, h_held = h_holdout(lab, scene["y_full"], C, 0.2, SEED)
+    o_tr, o_held = holdout_split(lab, C, 0.2, SEED)
+    assert np.array_equal(h_tr, o_tr) and np.array_equal(h_held, o_held)
+    thetas = (0.5, 2.0)
+    sc = dict(y_full=scene["y_full"], n_clusters=C, width=scene["width"], height=scene["height"], mask=scene["valid"],
+              views=scene["views"], prefix="algs-parity", degrade=None, crop=None)
+    h = h_select(sc, lab, "CPU", SEED, (thetas, theta_gs), f"parity|{theta_gs}")
+    th, tg, table = select_params(scene["views"], lab, C, thetas=thetas, theta_gs=theta_gs, seed=SEED, valid_mask=scene["valid"],
+                                  **PAPER_PARAMS)
+    assert (th, tg) == (h["theta"], h["theta_g"])
+    assert [(t["theta"], t["theta_g"]) for t in table] == [(t["theta"], t["theta_g"]) for t in h["table"]]
+    assert np.allclose([t["acc_holdout"] for t in table], [t["ACC_holdout"] for t in h["table"]], rtol=0, atol=1e-12)
