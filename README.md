@@ -6,8 +6,8 @@ Companion source code for the manuscript
 > remote sensing data.** Xuan Hoang Nguyen, Long Giang Nguyen, Dinh Sinh Mai. Manuscript submitted for publication (2026).
 
 A compact NumPy/scikit-learn implementation written to be read next to the equations of the paper: plain functions, no class
-hierarchy, CPU only. The repository publishes the **algorithm**, the **evaluation protocol** (label layouts and the local-corruption
-scenario, deterministic in the seed), a self-contained synthetic demonstration and tests, including numerical parity with the
+hierarchy, CPU only. The repository publishes the **algorithm** with its parameter selection, the label-sampling and block-corruption
+functions used in the paper (deterministic in the seed), a self-contained synthetic demonstration and tests, including numerical parity with the
 implementation used for the paper's experiments.
 
 **CoLA-MVFC** estimates one shared fuzzy membership `U` for co-registered views of very different dimensionality (for example a
@@ -63,7 +63,7 @@ res.view_weights        # (M,) supervised view weights a_j
 res.objective_history   # non-increasing
 ```
 
-## Paper protocol
+## Paper settings
 
 | Item | Setting (Section 4.1 of the paper) |
 |---|---|
@@ -71,7 +71,7 @@ res.objective_history   # non-increasing
 | Labels | `stratified_labels` or `region_labels` (radius 3) at 5 % per class; label-fraction curves at 1, 3, 5 and 10 %; seeds 42–51 |
 | Corruption | `cloud_blocks(views, 0, valid, H, W, 0.6, seed)`: 32 × 32 blocks covering 60 % of the valid pixels of the hyperspectral view, value 3 + N(0, 1) in every band, labelled pixels included, no mask given to the model |
 | Parameters | `PAPER_PARAMS` (m = 2, diagonal metric, label view weights, ε = 1e-4, at most 300 iterations); θ ∈ {0.5, 1, 2, 4}, θ_g ∈ {0.5, 0.8, 0.95} chosen per run by overall accuracy on 20 % held-out labels (`select_params`) |
-| Metric | Overall accuracy on the unlabelled valid pixels, cluster k read as class k |
+| Accuracy | Overall accuracy on the unlabelled valid pixels, cluster k read as class k |
 
 The datasets are not redistributed here; download them from their providers and pass the arrays as above.
 

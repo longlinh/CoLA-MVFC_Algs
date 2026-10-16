@@ -21,8 +21,8 @@ abstract: >-
   (per-dimension metric, class means, classifier guidance cost, view weight) is
   estimated from the fixed label set and expressed in a unit defined on it, and
   the views collaborate through one shared fuzzy membership. Includes the
-  evaluation protocol (label layouts, block corruption), a synthetic
-  demonstration and tests.
+  label-sampling and block-corruption functions used in the paper, a
+  synthetic demonstration and tests.
 keywords:
   - fuzzy c-means
   - semi-supervised clustering
