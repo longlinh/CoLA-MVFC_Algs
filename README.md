@@ -3,7 +3,7 @@
 Companion source code for the manuscript
 
 > **Collaborative label-anchored semi-supervised multi-view fuzzy clustering for hyperspectral and low-dimensional auxiliary
-> remote sensing data.** Xuan Hoang Nguyen, Dinh Sinh Mai, Long Giang Nguyen. Manuscript submitted for publication (2026).
+> remote sensing data.** Xuan Hoang Nguyen, Long Giang Nguyen, Dinh Sinh Mai. Manuscript submitted for publication (2026).
 
 A compact NumPy/scikit-learn implementation written to be read next to the equations of the paper: plain functions, no class
 hierarchy, CPU only. The repository publishes the **algorithm**, the **evaluation protocol** (label layouts and the local-corruption
