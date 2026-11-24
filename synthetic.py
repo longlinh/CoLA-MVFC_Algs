@@ -1,5 +1,5 @@
 """Synthetic co-registered multi-view scene: piecewise-constant class map on an H x W grid, one high-dimensional view and two
-low-dimensional auxiliary views that separate only some classes. Deterministic in the seed; z-scored per band like the paper."""
+low-dimensional auxiliary views that separate only some classes. Deterministic in the seed; every band z-scored over all pixels."""
 import numpy as np
 
 

@@ -110,9 +110,13 @@ def class_scales(views, lab_mask, y_lab, counts, nu, metric="diag"):
 
 def label_view_weights(views, lab_mask, y_lab, counts, xbar, Sinv, m, clip_eps=1e-12):
     """Lambda_j = mean over labelled pixels of -ln u_hat_{i,y_i}, where u_hat is the FCM membership with the centres at the class
-    means (the own class mean leaves pixel i out); a_j proportional to 1 / Lambda_j (Eq. (lambda)-(a) of the paper)."""
+    means (the own class mean leaves pixel i out; a class with a single label uses its full mean); a_j proportional to 1 / Lambda_j
+    (Eq. (11) of the paper)."""
     n, nk = y_lab.size, counts[y_lab]
     loo = nk >= 2
+    if not loo.all():
+        warnings.warn(f"classes {np.flatnonzero(counts == 1).tolist()} have a single label: leave-one-out mean undefined, the full class "
+                      "mean is used (Lambda_j is optimistic for these classes)", stacklevel=3)
     rows = np.arange(n)
     Lam = np.empty(len(views))
     for j, X in enumerate(views):
@@ -138,11 +142,15 @@ def _proba(clf, X, C, clip_p):
     return p / p.sum(axis=1, keepdims=True)
 
 
-def lda_posteriors(views, lab_mask, y_lab, C, folds=5, seed=None, clip_p=1e-6):
-    """Per-view shrinkage LDA (Ledoit-Wolf, closed form): posteriors on every pixel; labelled rows are replaced by stratified
-    out-of-fold predictions so that S_g is not biased low."""
+def lda_posteriors(views, lab_mask, y_lab, C, folds=5, seed=0, clip_p=1e-6):
+    """Per-view shrinkage LDA of scikit-learn (solver 'lsqr', shrinkage 'auto': Ledoit-Wolf shrinkage of every class covariance on
+    standardised features, pooled with the class priors): posteriors on every pixel; labelled rows are replaced by stratified
+    out-of-fold predictions (min(folds, smallest class size) folds, seeded) so that S_g is not biased low. With a class of a single
+    label no out-of-fold split exists and the in-sample posteriors are kept (with a warning)."""
     counts = np.bincount(y_lab, minlength=C)
     n_splits = int(min(folds, counts.min()))
+    if n_splits < 2:
+        warnings.warn(f"smallest class has {counts.min()} label(s): out-of-fold posteriors skipped (S_g biased low)", stacklevel=3)
     out = []
     for X in views:
         XL = X[lab_mask]
@@ -158,15 +166,25 @@ def lda_posteriors(views, lab_mask, y_lab, C, folds=5, seed=None, clip_p=1e-6):
 
 # ----------------------------------------------------------------------------- the model
 def cola_mvfc(views, labeled, n_clusters, theta=1.0, theta_g=0.8, m=2.0, metric="diag", view_prior="labels",
-              epsilon=1e-4, max_iter=300, objective_tol=1e-6, valid_mask=None, seed=None, oof_folds=5,
+              epsilon=1e-4, max_iter=300, objective_tol=1e-6, valid_mask=None, seed=0, oof_folds=5,
               clip_eps=1e-12, clip_p=1e-6) -> Result:
     """Fit CoLA-MVFC.
 
-    views     : list of M arrays (N, d_j), rows = the same pixels in every view (co-registered)
-    labeled   : (N,) int, class 0..C-1 on labelled pixels, NO_LABEL (-1) elsewhere; every class needs >= 1 label
-    valid_mask: (N,) bool, pixels that enter J (default: all); labelled pixels must be valid
-    theta     : class-mean constraint ratio (0 = off, large = centres fixed at the class means)
-    theta_g   : guidance share in [0, 1) (0 = no classifier guidance)
+    views        : list of M arrays (N, d_j), rows = the same pixels in every view (co-registered)
+    labeled      : (N,) int, class 0..C-1 on labelled pixels, NO_LABEL (-1) elsewhere; every class needs >= 1 label
+    n_clusters   : C >= 2, number of classes (cluster k is class k)
+    theta        : class-mean constraint ratio (0 = off, large = centres fixed at the class means)
+    theta_g      : guidance share in [0, 1) (0 = no classifier guidance)
+    m            : fuzzifier, m > 1
+    metric       : 'diag' (per-class, per-dimension variances on the labels; paper) or 'euclid' (normalised Euclidean; ablation)
+    view_prior   : 'labels' (a_j from the leave-one-out log-loss; paper) or 'uniform' (a_j = 1/M; ablation)
+    epsilon      : stop when max |u_ik^(t+1) - u_ik^(t)| over valid pixels < epsilon
+    max_iter     : maximum number of iterations
+    objective_tol: also stop when the relative decrease of J is <= objective_tol (0 = off)
+    valid_mask   : (N,) bool, pixels that enter J (default: all); labelled pixels must be valid
+    seed         : seed of the stratified out-of-fold split of the LDA posteriors (the only random step)
+    oof_folds    : number of out-of-fold splits (>= 2; fewer when the smallest class has fewer labels)
+    clip_eps     : lower bound of the fused cost D_ik and of Lambda_j; clip_p: lower bound of the posteriors before -ln
     """
     t0 = time.time()
     views = [np.asarray(v, dtype=np.float64) for v in views]
@@ -175,6 +193,10 @@ def cola_mvfc(views, labeled, n_clusters, theta=1.0, theta_g=0.8, m=2.0, metric=
         raise ValueError("views must be 2-D arrays with the same number of rows")
     if m <= 1.0 or theta < 0.0 or not (0.0 <= theta_g < 1.0):
         raise ValueError("need m > 1, theta >= 0 and 0 <= theta_g < 1")
+    if metric not in ("diag", "euclid") or view_prior not in ("labels", "uniform"):
+        raise ValueError("metric must be 'diag' or 'euclid'; view_prior must be 'labels' or 'uniform'")
+    if C < 2 or epsilon <= 0.0 or int(max_iter) < 1 or objective_tol < 0.0 or int(oof_folds) < 2 or clip_eps <= 0.0 or clip_p <= 0.0:
+        raise ValueError("need n_clusters >= 2, epsilon > 0, max_iter >= 1, objective_tol >= 0, oof_folds >= 2, clip_eps > 0, clip_p > 0")
     labeled = np.asarray(labeled).astype(int).reshape(-1)
     lab_mask = labeled != NO_LABEL
     y_lab = labeled[lab_mask]
@@ -256,8 +278,8 @@ def holdout_split(labeled, n_clusters, frac=0.2, seed=0):
 
 def select_params(views, labeled, n_clusters, thetas=PAPER_GRID["thetas"], theta_gs=PAPER_GRID["theta_gs"], frac=0.2, seed=0,
                   **kw):
-    """Choose (theta, theta_g) by overall accuracy on 20 % held-out labels, fitting on the other 80 % (per run, as in the paper).
-    Returns (theta, theta_g, table)."""
+    """Choose (theta, theta_g) by overall accuracy on 20 % held-out labels, fitting on the other 80 % (per run, as in the paper);
+    ties go to the first pair in grid order (theta in the outer loop). Returns (theta, theta_g, table)."""
     labeled = np.asarray(labeled).astype(int).reshape(-1)
     lab_tr, held = holdout_split(labeled, n_clusters, frac, seed)
     table = []

@@ -75,9 +75,14 @@ def test_protocol_shapes(scene):
 
 
 # ------------------------------------------------------------------ parity with the authors' implementation (skipped elsewhere)
-ds = pytest.importorskip("ds.clustering", reason="authors' ds library not installed")
+try:
+    import ds.clustering as ds
+except ImportError:
+    ds = None
+needs_ds = pytest.mark.skipif(ds is None, reason="authors' ds library not installed")
 
 
+@needs_ds
 @pytest.mark.parametrize("kw", [dict(), dict(theta=0.0), dict(theta_g=0.0), dict(metric="euclid"), dict(view_prior="uniform"),
                                 dict(theta=4.0, theta_g=0.95), dict(cloud=True)])
 def test_parity_with_ds(scene, kw):
@@ -135,3 +140,31 @@ def test_selection_parity_with_harness(scene, theta_gs):
     assert (th, tg) == (h["theta"], h["theta_g"])
     assert [(t["theta"], t["theta_g"]) for t in table] == [(t["theta"], t["theta_g"]) for t in h["table"]]
     assert np.allclose([t["acc_holdout"] for t in table], [t["ACC_holdout"] for t in h["table"]], rtol=0, atol=1e-12)
+
+
+PROTOCOL_FILES = sorted((ROOT / "protocol_files").glob("*.npz"))
+
+
+@pytest.mark.skipif(not PROTOCOL_FILES, reason="protocol files not present")
+@pytest.mark.parametrize("path", PROTOCOL_FILES, ids=lambda p: p.stem)
+def test_protocol_files_structure(path):
+    """Index sets are sorted and inside the image, held-out labels are a subset of the labels (about 20 %), cloud masks of
+    increasing coverage are nested (same seed, same block sequence) and every mask unpacks to the image size."""
+    z = np.load(path)
+    H, W, C = int(z["height"]), int(z["width"]), int(z["n_classes"])
+    assert len(z["reference_counts"]) == C and len(str(z["reference_sha256"])) == 64
+    for regime in z["regimes"]:
+        for seed in z["seeds"]:
+            idx, held = z[f"labelled|{regime}|{seed}"], z[f"heldout|{regime}|{seed}"]
+            assert np.all(np.diff(idx) > 0) and idx[-1] < H * W and len(idx) >= C
+            assert np.isin(held, idx).all() and 0.1 < len(held) / len(idx) <= 0.25
+    for seed in z["seeds"]:
+        masks = {c: np.unpackbits(z[f"{c}|{seed}"], count=H * W).astype(bool) for c in z["corruptions"]}
+        assert all(m.any() for m in masks.values())
+        assert np.all(masks["cloud20"] <= masks["cloud40"]) and np.all(masks["cloud40"] <= masks["cloud60"])
+
+
+def test_invalid_options_raise(scene):
+    for kw in (dict(metric="mahalanobis"), dict(view_prior="label"), dict(oof_folds=1), dict(epsilon=0.0), dict(max_iter=0)):
+        with pytest.raises(ValueError):
+            cola_mvfc(scene["views"], scene["lab"], scene["n_classes"], **kw)

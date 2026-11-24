@@ -14,3 +14,5 @@ data/
 *.mat
 *.tif
 *.npz
+# label sets, held-out labels and cloud masks of the paper's runs (pixel indices only, released with the code)
+!protocol_files/*.npz
