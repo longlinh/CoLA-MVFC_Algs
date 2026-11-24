@@ -111,6 +111,14 @@ def test_protocol_parity_with_harness(scene):
     sc = dict(y_full=scene["y_full"], n_clusters=scene["n_classes"], width=scene["width"], height=scene["height"],
               mask=scene["valid"], views=scene["views"])
     assert np.array_equal(h_strat(sc, 0.05, SEED), stratified_labels(scene["y_full"], scene["n_classes"], 0.05, SEED))
+    from gate.degrade import degrade_scene, parse_degrade
+    from protocol import blob_patches, class_bias, haze_blocks, shadow_blocks, zero_blocks
+    v, m, H, W, y = scene["views"], scene["valid"], scene["height"], scene["width"], scene["y_full"]
+    for spec, block, ours in (("0:0.4:zero", 32, zero_blocks(v, 0, m, H, W, 0.4, SEED)), ("0:0.4:haze", 32, haze_blocks(v, 0, m, H, W, 0.4, SEED)),
+                              ("0:0.4:shadow", 16, shadow_blocks(v, 0, m, H, W, 0.4, SEED, block=16)),
+                              ("0:0.4:blob", 32, blob_patches(v, 0, m, H, W, 0.4, SEED)), ("0:1:bias", 32, class_bias(v, 0, y))):
+        ref = degrade_scene({**sc, "y_full": y}, parse_degrade(spec), SEED, block=block)
+        assert np.array_equal(ref["damaged"], ours[1]) and all(np.array_equal(a, b) for a, b in zip(ref["views"], ours[0])), spec
     assert np.array_equal(h_region(sc, 0.05, SEED), region_labels(scene["y_full"], scene["n_classes"], scene["width"], 0.05, SEED))
     h = h_cloud(sc, 0, 0.6, SEED, block=32, level=3.0)
     ours, dam = cloud_blocks(scene["views"], 0, scene["valid"], scene["height"], scene["width"], 0.6, SEED)

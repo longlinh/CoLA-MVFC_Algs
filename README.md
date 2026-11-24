@@ -74,7 +74,7 @@ res.objective_history   # non-increasing
 |---|---|
 | Data | Trento (HSI + LiDAR) [1], MUUFL Gulfport (HSI + DSM + LiDAR intensity) [2, 3], Augsburg (HSI + SAR + DSM) [4], from their providers; every band z-scored with the mean and population standard deviation over the reference-map pixels |
 | Labels | `stratified_labels` or `region_labels` (radius 3) at 5 % per class; label-fraction curves at 1, 3, 5 and 10 %; seeds 42–51 |
-| Corruption | on the hyperspectral view, labelled pixels included, no mask given to the model: `cloud_blocks` (32 × 32 blocks, value 3 + N(0, 1), 20, 40 and 60 % of the valid pixels), `zero_blocks` (missing data, 40 %), `haze_blocks` (thin cloud with soft edges, 40 and 60 %) |
+| Corruption | on the hyperspectral view, no mask given to the model: `cloud_blocks` (value 3 + N(0, 1); 20, 40, 60 % of the valid pixels with 32 × 32 blocks, 60 % with 16 × 16 and 64 × 64 blocks), `zero_blocks` (missing data, 40 %), `haze_blocks` (thin cloud with soft edges, 40, 60 %), `shadow_blocks` (clouds with shadows keeping 0.3 of the reflectance, 40 %), `blob_patches` (irregular patches of random opacity, 40, 60 %), `class_bias` (+1.5 in every band of the most frequent class). Labels either share the corruption (labelled pixels corrupted too) or keep their original values (only unlabelled pixels corrupted) |
 | Parameters | `PAPER_PARAMS` (m = 2, diagonal metric, label view weights, ε = 1e-4, at most 300 iterations); θ ∈ {0.5, 1, 2, 4}, θ_g ∈ {0.5, 0.8, 0.95} chosen per run by overall accuracy on 20 % held-out labels (`select_params`) |
 | Accuracy | Overall accuracy on the unlabelled valid pixels, cluster k read as class k |
 
@@ -101,7 +101,7 @@ the value of the reference map at that index.
 | `reference_counts`, `reference_sha256` | reference pixels per class, and SHA-256 of the reference map as int16 little-endian (−1 outside) |
 | `labelled\|<regime>\|<seed>` | indices of the labelled pixels (int32, ascending); `<regime>`: `stratified1`, `stratified3`, `stratified5`, `stratified10`, `region5` |
 | `heldout\|<regime>\|<seed>` | indices of the held-out labels used for parameter selection |
-| `<corruption>\|<seed>` | covered pixels, `np.packbits` of a boolean vector of length H·W; `<corruption>`: `cloud20`, `cloud40`, `cloud60`, `haze40`, `haze60` (missing data at 40 % uses the blocks of `cloud40`) |
+| `<corruption>\|<seed>` | covered pixels, `np.packbits` of a boolean vector of length H·W; `<corruption>`: `cloud20`, `cloud40`, `cloud60`, `cloud60b16`, `cloud60b64`, `haze40`, `haze60`, `shadow40`, `blob40`, `blob60` (missing data at 40 % uses the blocks of `cloud40`; `class_bias` covers every reference pixel of the most frequent class and has no stored mask) |
 
 ```python
 import hashlib
@@ -123,7 +123,7 @@ W, 0.6, seed)`; its mask equals `covered`, and when it does the values match as 
 | File | Content |
 |---|---|
 | `cola_mvfc.py` | the model: label anchoring (`class_scales`, `label_view_weights`, `lda_posteriors`), closed-form updates, `cola_mvfc`, `select_params` |
-| `protocol.py` | label layouts and corruptions of the paper |
+| `protocol.py` | label layouts and the corruptions of the paper |
 | `protocol_files/` | pixel indices of the label sets, held-out labels and corruption masks of the paper's runs (seeds 42–51) |
 | `synthetic.py`, `demo.py` | synthetic co-registered scene and demonstration |
 | `tests/` | monotonicity, fixed labelled rows, unit of the guidance cost, determinism, parameter selection, input checks, structure of the protocol files; parity with the authors' implementation when available |
